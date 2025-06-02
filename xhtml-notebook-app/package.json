@@ -1,0 +1,28 @@
+{
+  "name": "xhtml-notebook-app",
+  "version": "1.0.0",
+  "description": "A web application for taking and managing notes with rich text formatting and JSON export.",
+  "main": "src/index.xhtml",
+  "scripts": {
+    "start": "live-server public",
+    "build": "echo 'Build step not defined'",
+    "test": "echo 'No tests defined'"
+  },
+  "keywords": [
+    "notes",
+    "xhtml",
+    "json",
+    "web-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "live-server": "^1.2.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/xhtml-notebook-app.git"
+  },
+  "homepage": "https://github.com/yourusername/xhtml-notebook-app#readme"
+}
