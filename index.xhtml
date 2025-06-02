@@ -37,9 +37,40 @@
         .highlight {
             background: yellow;
         }
+        #file-explorer-toggle {
+            position:fixed;
+            left:0;
+            top:50px;
+            width:32px;
+            height:32px;
+            background:#eee;
+            border-radius:0 8px 8px 0;
+            box-shadow:1px 1px 4px #0002;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            z-index:10;
+        }
+        #file-explorer {
+            position:fixed;
+            left:0;
+            top:90px;
+            width:200px;
+            max-height:70vh;
+            overflow-y:auto;
+            background:#fff;
+            border-radius:0 8px 8px 0;
+            box-shadow:2px 2px 8px #0002;
+            padding:12px;
+            display:none;
+            z-index:10;
+        }
     </style>
 </head>
 <body>
+    <div id="file-explorer-toggle" onclick="toggleFileExplorer()">&#9776;</div>
+    <div id="file-explorer"></div>
     <div id="notebook-container">
         <div id="toolbar">
             <select id="fontSelect">
@@ -54,7 +85,250 @@
             <button type="button" onclick="saveToFile()">Export JSON</button>
             <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importFromFile(event)" />
             <button type="button" onclick="document.getElementById('importFile').click()">Import JSON</button>
-            <button type="button" onclick="restoreBackup()">Restore Backup</button>
+            <button onclick="window.location='https://github.com/colacaine/Better-Textpad'">Github Repository</button>
+            <button type="button" onclick="promptAndSaveNote()">Save Note</button>
+            <button type="button" onclick="newBlankNote()">New Blank Note</button>
         </div>
+        <div id="note-title" style="font-weight:bold;font-size:1.2em;margin-bottom:8px;"></div>
         <div id="editor" contenteditable="true"></div>
-        <div style
+    </div>
+    <script type="text/javascript">
+//<![CDATA[
+        // Formatting functions
+        function format(command) {
+            document.execCommand(command, false, null);
+            autosave();
+        }
+        function highlight() {
+            document.execCommand('backColor', false, 'yellow');
+            autosave();
+        }
+        // Font selection
+        document.getElementById('fontSelect').addEventListener('change', function() {
+            document.getElementById('editor').style.fontFamily = this.value;
+            autosave();
+        });
+        // Autosave to localStorage
+        function autosave() {
+            var content = document.getElementById('editor').innerHTML;
+            var font = document.getElementById('fontSelect').value;
+            var data = { content: content, font: font, date: new Date().toISOString() };
+            localStorage.setItem('notebook-autosave', JSON.stringify(data));
+            if (currentNoteName) {
+                localStorage.setItem('notebook-current-note', currentNoteName);
+            }
+        }
+        // Load from autosave
+        function loadAutosave() {
+            // Only load autosave if there is no last saved note
+            var lastNoteName = localStorage.getItem('notebook-current-note');
+            if (lastNoteName && localStorage.getItem('notebook-note-' + lastNoteName)) {
+                // Do not auto-open last note, just show empty editor
+                currentNoteName = null;
+                updateNoteTitle();
+            } else {
+                // Also do not load autosave, just show empty editor
+                document.getElementById('editor').innerHTML = '';
+                document.getElementById('fontSelect').value = 'Arial, sans-serif';
+                document.getElementById('editor').style.fontFamily = 'Arial, sans-serif';
+                currentNoteName = null;
+                updateNoteTitle();
+            }
+            loadFileExplorer();
+        }
+        // Export JSON
+        function saveToFile() {
+            // Export all notebook notes and state
+            var notes = {};
+            var keys = Object.keys(localStorage).filter(function(k){return k.indexOf('notebook-note-') === 0;});
+            keys.forEach(function(k) {
+                notes[k] = localStorage.getItem(k);
+            });
+            var state = {
+                notes: notes,
+                currentNoteName: localStorage.getItem('notebook-current-note') || null,
+                autosave: localStorage.getItem('notebook-autosave') || null
+            };
+            var blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'notebook.json';
+            a.click();
+        }
+        // Import JSON
+        function importFromFile(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var state = JSON.parse(e.target.result);
+                // Clear all notebook notes
+                var keys = Object.keys(localStorage).filter(function(k){return k.indexOf('notebook-note-') === 0;});
+                keys.forEach(function(k) { localStorage.removeItem(k); });
+                // Restore notes
+                if (state.notes) {
+                    Object.keys(state.notes).forEach(function(k) {
+                        localStorage.setItem(k, state.notes[k]);
+                    });
+                }
+                // Restore current note and autosave
+                if (state.currentNoteName) {
+                    localStorage.setItem('notebook-current-note', state.currentNoteName);
+                } else {
+                    localStorage.removeItem('notebook-current-note');
+                }
+                if (state.autosave) {
+                    localStorage.setItem('notebook-autosave', state.autosave);
+                } else {
+                    localStorage.removeItem('notebook-autosave');
+                }
+                loadFileExplorer();
+                loadAutosave();
+            };
+            reader.readAsText(file);
+        }
+        // Restore backup
+        function restoreBackup() {
+            window.location.href="https://github.com/ColaCaine/Better-Textpad"();
+        }
+        // File Explorer logic
+        function toggleFileExplorer() {
+            var fe = document.getElementById('file-explorer');
+            fe.style.display = (fe.style.display === 'block') ? 'none' : 'block';
+            if (fe.style.display === 'block') loadFileExplorer();
+        }
+        var currentNoteName = null;
+        function promptAndSaveNote() {
+            if (currentNoteName) {
+                // If editing an already saved note, just save to it
+                var content = document.getElementById('editor').innerHTML;
+                var font = document.getElementById('fontSelect').value;
+                var data = { content: content, font: font, date: new Date().toISOString() };
+                localStorage.setItem('notebook-note-' + currentNoteName, JSON.stringify(data));
+                updateNoteTitle();
+                loadFileExplorer();
+                return;
+            }
+            var noteName = prompt('Enter a name for your note:');
+            if (!noteName) return;
+            var baseName = noteName;
+            var suffix = 1;
+            while (localStorage.getItem('notebook-note-' + noteName)) {
+                var action = prompt('A note with this name exists. Type "replace" to overwrite, "copy" to create a copy, or "cancel" to abort.');
+                if (!action || action.toLowerCase() === 'cancel') return;
+                if (action.toLowerCase() === 'replace') break;
+                if (action.toLowerCase() === 'copy') {
+                    // Find next available copy name
+                    do {
+                        noteName = baseName + ' (' + suffix + ')';
+                        suffix++;
+                    } while (localStorage.getItem('notebook-note-' + noteName));
+                    break;
+                }
+            }
+            var content = document.getElementById('editor').innerHTML;
+            var font = document.getElementById('fontSelect').value;
+            var data = { content: content, font: font, date: new Date().toISOString() };
+            localStorage.setItem('notebook-note-' + noteName, JSON.stringify(data));
+            currentNoteName = noteName;
+            localStorage.setItem('notebook-current-note', currentNoteName);
+            updateNoteTitle();
+            loadFileExplorer();
+        }
+        function newBlankNote() {
+            document.getElementById('editor').innerHTML = '';
+            document.getElementById('fontSelect').value = 'Arial, sans-serif';
+            document.getElementById('editor').style.fontFamily = 'Arial, sans-serif';
+            currentNoteName = null;
+            updateNoteTitle();
+        }
+        function loadFileExplorer() {
+            var fe = document.getElementById('file-explorer');
+            // Clear file explorer content safely
+            while (fe.firstChild) fe.removeChild(fe.firstChild);
+            var title = document.createElement('b');
+            title.appendChild(document.createTextNode('Saved Notes'));
+            fe.appendChild(title);
+            fe.appendChild(document.createElement('br'));
+            // Add Delete All Notes button
+            var delAllBtn = document.createElement('button');
+            delAllBtn.appendChild(document.createTextNode('Delete All Notes'));
+            delAllBtn.onclick = function() {
+                if (confirm('Are you sure you want to delete ALL notes? This cannot be undone.')) {
+                    var keys = Object.keys(localStorage).filter(function(k){return k.indexOf('notebook-note-') === 0;});
+                    keys.forEach(function(k) { localStorage.removeItem(k); });
+                    localStorage.removeItem('notebook-current-note');
+                    currentNoteName = null;
+                    updateNoteTitle();
+                    loadFileExplorer();
+                    document.getElementById('editor').innerHTML = '';
+                }
+            };
+            fe.appendChild(delAllBtn);
+            fe.appendChild(document.createElement('br'));
+            var keys = Object.keys(localStorage).filter(function(k){return k.indexOf('notebook-note-') === 0;});
+            if (keys.length === 0) {
+                var empty = document.createElement('i');
+                empty.appendChild(document.createTextNode('No notes saved.'));
+                fe.appendChild(empty);
+                return;
+            }
+            keys.forEach(function(k) {
+                var noteName = k.substring('notebook-note-'.length);
+                var btn = document.createElement('button');
+                btn.appendChild(document.createTextNode('Open'));
+                btn.onclick = function() { openNote(noteName); };
+                var delBtn = document.createElement('button');
+                delBtn.appendChild(document.createTextNode('Delete'));
+                delBtn.style.marginLeft = '6px';
+                delBtn.onclick = function() {
+                    if (confirm('Delete note "' + noteName + '"?')) {
+                        localStorage.removeItem('notebook-note-' + noteName);
+                        if (currentNoteName === noteName) {
+                            currentNoteName = null;
+                            updateNoteTitle();
+                            document.getElementById('editor').innerHTML = '';
+                        }
+                        loadFileExplorer();
+                    }
+                };
+                var div = document.createElement('div');
+                div.style.margin = '6px 0';
+                div.appendChild(btn);
+                div.appendChild(document.createTextNode(' ' + noteName));
+                div.appendChild(delBtn);
+                fe.appendChild(div);
+            });
+        }
+        function openNote(noteName) {
+            var data = localStorage.getItem('notebook-note-' + noteName);
+            if (!data) return;
+            var obj = JSON.parse(data);
+            document.getElementById('editor').innerHTML = obj.content || '';
+            document.getElementById('fontSelect').value = obj.font || 'Arial, sans-serif';
+            document.getElementById('editor').style.fontFamily = obj.font || 'Arial, sans-serif';
+            currentNoteName = noteName;
+            localStorage.setItem('notebook-current-note', currentNoteName);
+            updateNoteTitle();
+            autosave();
+        }
+        function updateNoteTitle() {
+            var titleDiv = document.getElementById('note-title');
+            if (currentNoteName) {
+                titleDiv.textContent = currentNoteName;
+            } else {
+                titleDiv.textContent = '';
+            }
+        }
+        // On load, show last opened note name if any
+        // Only assign window.onload ONCE and do not reassign it
+        window.addEventListener('load', function() {
+            loadAutosave();
+            updateNoteTitle();
+        });
+        // Save on input
+        document.getElementById('editor').addEventListener('input', autosave);
+//]]>
+    </script>
+</body>
+</html>
