@@ -3,6 +3,9 @@
 <head>
     <title>XHTML Notebook WebApp</title>
     <meta charset="UTF-8" />
+    <link rel="manifest" href="/xhtml-notebook-app/public/manifest.json" />
+    <meta name="theme-color" content="#f8f8f8" />
+    <link rel="icon" type="image/png" href="/xhtml-notebook-app/public/icon-192.png" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -92,6 +95,7 @@
         <div id="note-title" style="font-weight:bold;font-size:1.2em;margin-bottom:8px;"></div>
         <div id="editor" contenteditable="true"></div>
     </div>
+    <button id="installBtn" style="position:fixed;right:24px;top:24px;z-index:100;display:none;">Install App</button>
     <script type="text/javascript">
 //<![CDATA[
         // Formatting functions
@@ -328,6 +332,33 @@
         });
         // Save on input
         document.getElementById('editor').addEventListener('input', autosave);
+    // PWA: Service Worker registration
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/xhtml-notebook-app/public/service-worker.js').then(function(reg) {
+                // Registration successful
+            }, function(err) {
+                // Registration failed
+            });
+        });
+    }
+    // PWA: Install prompt
+    var deferredPrompt;
+    var installBtn = document.getElementById('installBtn');
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
+    });
+    installBtn.addEventListener('click', function() {
+        installBtn.style.display = 'none';
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(choiceResult) {
+                deferredPrompt = null;
+            });
+        }
+    });
 //]]>
     </script>
 </body>
