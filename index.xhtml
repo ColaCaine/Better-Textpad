@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>XHTML Notebook WebApp</title>
+    <meta charset="UTF-8" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        #notebook-container {
+            max-width: 700px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0002;
+            padding: 24px;
+        }
+        #toolbar {
+            margin-bottom: 12px;
+        }
+        #toolbar select, #toolbar button, #toolbar input[type="file"] {
+            margin-right: 8px;
+            padding: 4px 8px;
+        }
+        #editor {
+            min-height: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 12px;
+            background: #fafafa;
+            font-size: 1.1em;
+            outline: none;
+        }
+        .highlight {
+            background: yellow;
+        }
+    </style>
+</head>
+<body>
+    <div id="notebook-container">
+        <div id="toolbar">
+            <select id="fontSelect">
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Courier New, monospace">Courier New</option>
+                <option value="Times New Roman, serif">Times New Roman</option>
+            </select>
+            <button type="button" onclick="format('bold')"><b>B</b></button>
+            <button type="button" onclick="format('italic')"><i>I</i></button>
+            <button type="button" onclick="highlight()">Highlight</button>
+            <button type="button" onclick="saveToFile()">Export JSON</button>
+            <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importFromFile(event)" />
+            <button type="button" onclick="document.getElementById('importFile').click()">Import JSON</button>
+            <button type="button" onclick="restoreBackup()">Restore Backup</button>
+        </div>
+        <div id="editor" contenteditable="true"></div>
+        <div style
